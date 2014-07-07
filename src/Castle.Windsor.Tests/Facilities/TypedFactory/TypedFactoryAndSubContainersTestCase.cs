@@ -16,6 +16,7 @@ namespace Castle.Windsor.Tests.Facilities.TypedFactory.Components
 {
 	using Castle.Facilities.TypedFactory;
 	using Castle.MicroKernel.Registration;
+    using Castle.Windsor.Tests.ClassComponents;
 	using Castle.Windsor.Tests.Facilities.TypedFactory.Factories;
 
 	using CastleTests;
@@ -126,5 +127,22 @@ namespace Castle.Windsor.Tests.Facilities.TypedFactory.Components
 			Container.Release(factory);
 			service.GetValue(); // throws ObjectDisposedException
 		}
-	}
+
+        [Test]
+        public void FactoryCreatesTransientComponentDependingOnSingletonDependingOnAnotherFactory_TransientCompontentReleased_ShouldNotDisposeSecondFactory()
+        {
+            Container.Kernel.AddFacility<TypedFactoryFacility>();
+            Container.Register(Component.For<IGenericFactory<ComponentWithDependency<ComponentWithDisposableFactoryDependency>>>().AsFactory().LifestyleTransient(),
+                Component.For<ComponentWithDependency<ComponentWithDisposableFactoryDependency>>().LifestyleTransient(),
+                Component.For<ComponentWithDisposableFactoryDependency>().LifestyleSingleton(),
+                Component.For<IDisposableFactory>().AsFactory().LifestyleTransient(),
+                Component.For<DisposableComponent>().LifestyleTransient());
+
+            var factory = Container.Resolve<IGenericFactory<ComponentWithDependency<ComponentWithDisposableFactoryDependency>>>();
+            var transientComponent = factory.Create();
+            Container.Release(factory);
+            var singletonComponent = Container.Resolve<ComponentWithDisposableFactoryDependency>();
+            singletonComponent.UseFactory(); // throws ObjectDisposedException
+        }
+    }
 }
